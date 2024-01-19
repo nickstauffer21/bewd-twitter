@@ -18,6 +18,8 @@ class TweetsController < ApplicationController
   end
 
   def index
+    @tweets = Tweet.all
+    render 'tweets/index.json'
   end
 
   def index_by_user
