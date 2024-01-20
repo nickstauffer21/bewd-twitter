@@ -2,7 +2,7 @@ class TweetsController < ApplicationController
   def create
     @tweet = Tweet.new(tweet_params)
 
-    if @tweet.save
+    if @tweet.save!
       render json: {
         success: true,
         tweet: {
@@ -18,19 +18,17 @@ class TweetsController < ApplicationController
   end
 
   def index
-    @tweets = Tweet.all
-    render 'tweets/index.json'
+    @tweets = Tweet.all.order(created_at: :desc)
+    render 'tweets/index'
   end
 
   def index_by_user
   end
 
   def destroy
-
   end
 
   private
-
 
   def tweet_params
     params.require(:tweet).permit(:message)
