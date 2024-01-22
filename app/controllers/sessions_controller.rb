@@ -11,7 +11,7 @@ class SessionsController < ApplicationController
       render json: {
         success: true
       }
-    else 
+    else
       render json: {
         success: false
       }

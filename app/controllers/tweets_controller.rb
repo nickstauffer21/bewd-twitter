@@ -1,68 +1,102 @@
 class TweetsController < ApplicationController
+  
 
-  before_action :find_tweet, only: [:destroy]
   def create
-    @tweet = Tweet.new(tweet_params)
+  if user_authenticated?
+    @tweet = current_user.tweets.build(tweet_params)
 
-    if @tweet.save!
+    if @tweet.save
       render json: {
         success: true,
         tweet: {
-          username: user.username,
+          username: @tweet.user.username,
           message: @tweet.message
         }
       }
-
+    else
+      render json: {
+        success: false
+      }
     end
+  else
+    render json: {
+      success: false
+    }
   end
+end
 
   def index
     @tweets = Tweet.all.order(created_at: :desc)
-    render 'tweets/index.json'
+    render 'tweets/index'
   end
 
   def index_by_user
     @user = User.find_by(username: params[:username])
 
     if @user
-      @tweets = @user.tweets
-
+      @tweets = @user.tweets.order(created_at: :desc)
       render json: {
-        id: @tweets.id,
-        username: @user.username, # Include the username in each tweet
-        message: tweet.message
+        tweets: @tweets.map { |tweet| format_tweet(tweet) }
       }
     else
-      render json: {
-
+      redner json: {
         success: false
       }
     end
   end
 
+
   def destroy
-    if current_user && current_user == @tweet.user
-      @tweet.destroy
-      render json: { success: true}
-    else
-      render json: { success: false }
+    @tweet = Tweet.find_by(id: params[:id])
+
+    if @tweet
+      if user_authenticated? && @tweet.user == current_user
+        if @tweet.destroy
+          render json: { success: true }
+        else
+          render json: { success: false}
+        end
+      else
+        render json: unauthorized_response
+      end
     end
   end
 
   private
 
+  def tweet_params
+    params.require(:tweet).permit(:message)
+  end
 
+  def format_tweet(tweet)
+    {
+      id: tweet.id,
+      username: tweet.user.username,
+      message: tweet.message
+    }
+  end
 
-  def find_tweet
-    @tweet = Tweet.find_by(id: params[:id])
+  def user_authenticated?
+    current_user.present?
+  end
 
-    unless @tweet
-      render json: { success: false, message: 'Tweet not found' }
+  def unauthorized_response
+    if user_authenticated?
+      { success: false, errors: 'Unauthorized' }
+    else
+      { success: false, errors: 'not logged in' }
+    end
+  end
+
+  def authenticate_user!
+    unless user_authenticated?
+      render json: { success: false, errors: 'Unauthorized' }
     end
   end
 
 
-  def tweet_params
-    params.require(:tweet).permit(:message)
+  def current_user
+    @current_user ||= User.find(session[:user_id]) if session[:user_id]
   end
 end
+  
