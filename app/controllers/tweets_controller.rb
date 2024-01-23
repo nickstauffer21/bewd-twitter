@@ -1,29 +1,26 @@
 class TweetsController < ApplicationController
-  
-
   def create
-  if user_authenticated?
-    @tweet = current_user.tweets.build(tweet_params)
+    if user_authenticated?
+      @tweet = current_user.tweets.new(tweet_params)
 
-    if @tweet.save
-      render json: {
-        success: true,
-        tweet: {
-          username: @tweet.user.username,
-          message: @tweet.message
+      if @tweet.save!
+        render json: {
+          tweet: {
+            username: @tweet.user.username,
+            message: @tweet.message
+          }
         }
-      }
+      else
+        render json: {
+          success: false
+        }
+      end
     else
       render json: {
         success: false
       }
     end
-  else
-    render json: {
-      success: false
-    }
   end
-end
 
   def index
     @tweets = Tweet.all.order(created_at: :desc)
@@ -45,7 +42,6 @@ end
     end
   end
 
-
   def destroy
     @tweet = Tweet.find_by(id: params[:id])
 
@@ -54,10 +50,10 @@ end
         if @tweet.destroy
           render json: { success: true }
         else
-          render json: { success: false}
+          render json: { success: false }
         end
       else
-        render json: unauthorized_response
+        render json: { success: false }
       end
     end
   end
@@ -80,23 +76,13 @@ end
     current_user.present?
   end
 
-  def unauthorized_response
-    if user_authenticated?
-      { success: false, errors: 'Unauthorized' }
-    else
-      { success: false, errors: 'not logged in' }
-    end
-  end
-
   def authenticate_user!
-    unless user_authenticated?
-      render json: { success: false, errors: 'Unauthorized' }
-    end
+    render json: { success: false, errors: 'Unauthorized' } unless user_authenticated?
   end
-
 
   def current_user
-    @current_user ||= User.find(session[:user_id]) if session[:user_id]
+    token = cookies.permanent.signed[:twitter_session_token]
+    session = Session.find_by(token: token)
+    session.user if session
   end
 end
-  
